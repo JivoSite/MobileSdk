@@ -172,7 +172,7 @@ static Class hackishFixClass = Nil;
 
 
 - (NSString *)decodeString:(NSString *)encodedString {
-    NSString *decodedString = [encodedString stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    NSString *decodedString = [encodedString stringByRemovingPercentEncoding];
 
     return decodedString;
 }
