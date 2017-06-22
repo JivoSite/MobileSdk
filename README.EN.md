@@ -100,6 +100,7 @@ Use jivoSdk callApiMethod(methodName: String, data: String) method
 **method setContactInfo (clientInfo : JSONSTRING)**
 Sets the contact info of the visitor. The data is displayed to the agent is a same as if a visitor introduced in the chat window. It's a special function to set contact info because name, phone number and e-mail are very important in JivoChat - visitor can introduce himself at the beginning of chat.
 **clientInfo: JSONSTRING of Object**
+
 | Key      | Type           | Description  |
 | ------------- |:-------------:| ---------:|
 | client_name   | string        | Client's name |
@@ -111,11 +112,13 @@ Sets the contact info of the visitor. The data is displayed to the agent is a sa
 **method setCustomData (customData : JSONSTRING)**
 Using this method you can send any additional info about the client to the agent's App. This info will be shown on the information panel, located on the right side of the agent's App. The method can be called as many times as you need. If chat is established, information in the agent's App will be updated in real time. Fields will be displayed in the same sequence as they are in the array 'fields'.
 **customData: JSONSTRING of Array**
+
 | Param      | Type           | Description  |
 | ------------- |:-------------:| ---------:|
 | customData   | Array        | List of additional data fields of the chat |
 
 fields of object
+
 | Key      | Type           | Description  |
 | ------------- |:-------------:| ---------:|
 |content	|string	|Content of data field. Tags will be insulated|
@@ -127,6 +130,7 @@ fields of object
 **method setUserToken (userToken : JSONSTRING)**
 Use this method to open chat window with custom text at the moment you need. This may be useful if you want to show proactive invitation after the client added goods to cart of your online store
 **userToken : JSONSTRING of string**
+
 | Param      | Type           | Description  |
 | ------------- |:-------------:| ---------:|
 |userToken	|string	|Visitor id|
@@ -134,6 +138,7 @@ Use this method to open chat window with custom text at the moment you need. Thi
 #### SDK API sendMessage
 **method sendMessage (message : JSONSTRING)**
 **message : JSONSTRING of string**
+
 | Param      | Type           | Description  |
 | ------------- |:-------------:| ---------:|
 |message	|string	|Message text|
