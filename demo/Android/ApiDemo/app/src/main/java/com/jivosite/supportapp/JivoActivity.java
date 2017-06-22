@@ -35,8 +35,11 @@ public class JivoActivity extends Activity implements JivoDelegate{
     @Override
     public void onEvent(String name, String data) {
         if(name.equals("url.click")){
-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(data));
-            startActivity(browserIntent);
+            if(data.length() > 2){
+                String url = data.substring(1, data.length() - 1);
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(browserIntent);
+            }
         }
     }
 

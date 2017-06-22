@@ -65,6 +65,12 @@
 //************************************************
 -(void)onEvent:(NSString *)name :(NSString*)data;{
     NSLog(@"event:%@, data:%@", name, data);
+    if([[name lowercaseString] isEqualToString:@"url.click"]){
+        if([data length] > 2){
+            NSString *urlStr = [data substringWithRange:NSMakeRange(1,[data length] - 2)];
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:urlStr]];
+        }
+    }
 }
 
 

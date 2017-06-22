@@ -11,23 +11,40 @@
     </style>
     <script>
         jivo_config = {
-            
+
             /*
              "plane_color":"red",
-             
+
              "agentMessage_bg_color":'green', //цвет агентского сообщения
              "agentMessage_txt_color":'blue', //цвет текста агентского сообщения
-             
+
              "clientMessage_bg_color":'yellow', //цвет клиентского сообщения
              "clientMessage_txt_color":'black', //цвет текста клиентского сообщения
-            */
-            
+             */
+
             "active_message": "Здравствуйте! Я могу вам чем-то помочь?",
             "widget_id": "W3wEFsWUAR", //widget_id
             "site_id": 204998, //site_id
             "app_link":'Widget_Mobile_ru',//ссылка, которая будет светиться у оператора
-            "placeholder": 'Введите сообщение'
+            "placeholder": 'Введите сообщение',
+            "secure": true,
+            "event_func": function(event){console.log(event)}
         }
+    </script>
+    <script>
+      window._store = function (key, value){
+        key = ['jv', key, jivo_config.widget_id].join('_');
+        if (arguments.length > 1 && String(value) !== "[object Object]") {
+          localStorage.setItem(key, JSON.stringify(value));
+        }
+      }
+      window._setData = function(client_name, email, phone){
+        window._store('sess_id', "");
+        window._store('client_name', client_name);
+        window._store('email', email);
+        window._store('phone', phone);
+        window.location.reload();
+      }
     </script>
     <script src="bundle.js"></script>
 </head>

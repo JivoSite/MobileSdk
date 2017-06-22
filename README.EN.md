@@ -75,15 +75,120 @@ To use the SDK in the iOS app you need to move the folder and the html source co
 To use the SDK in the Android app the resources html and source codes of JivoSdk should be put to the assets folder. In Activity to incorporate implement JivoDelegate and place the UIWebView component. Declare a JivoSDK variable and initialize it. During the initialization pass a reference to a webview and the languageKey string, which will load either the Russian or English localization file index_<lang>.html. The onEvent method will receive the events from the component. The list of such events can be found  below.
 
 ### Events
-The widget sends the following events in the onEvent method
+The widget sends the following events in the **onEvent** method with JSONSTRING parameters
 
-- a connection is being established (‘connection.connect’)
-- connection terminated (‘connection.disconnect’)
-- errors during connection (the‘connection.error’)
-- receiving a message (‘agent.message’)
-- the chat server has terminated the connection, there is no one to answer (a‘connection.force_offline)
-- have a connection to a server‘connection.startup_ok’)
-- the operator has accepted the chat‘connection.accep't)
-- the operator has transferred the chat‘connection.transferred’)
-- changed operator (‘agent.set’)
+- **'chat.force_offline'** : the chat server has terminated the connection, there is no one to answer
+- **'chat.ready'** : chat ready
+- **'chat.accept'** : the operator has accepted the chat
+- **'chat.transferred'** : the operator has transferred the chat
+- **'chat.mode'** : chat operators state ( с параметром chat_mode : JSONSTRING)
+- **'connection.connecting'** : connecting to server
+- **'connection.disconnect'** : connection closed
+- **'connection.connect'** : connection established
+- **'connection.error'** : connection error (with parameter error : JSONSTRING)
+- **'agent.message'** : agent message (with parameter message : JSONSTRING)
+- **'agent.chat_close'** : chat closed by operator
+- **'agent.info'** : operator info has been recieved (with parameter agentInfo : JSONSTRING)
+- **'contact_info'** client info has been recieved (with parameter contact_info : JSONSTRING)
+- **'url.click'** : url click (with parameter href : JSONSTRING)
+- **'agent.name'** : operator name has been recieved (with parameter agent_name : JSONSTRING)
+
+### Api functions
+Use jivoSdk callApiMethod(methodName: String, data: String) method
+
+#### SDK API setContactInfo
+**method setContactInfo (clientInfo : JSONSTRING)**
+Sets the contact info of the visitor. The data is displayed to the agent is a same as if a visitor introduced in the chat window. It's a special function to set contact info because name, phone number and e-mail are very important in JivoChat - visitor can introduce himself at the beginning of chat.
+**clientInfo: JSONSTRING of Object**
+
+| Key      | Type           | Description  |
+| ------------- |:-------------:| ---------:|
+| client_name   | string        | Client's name |
+| email         | string      | Client's email |
+| phone         | string      | Client's phone number |
+| description   | string      | Additional information about the client |
+
+#### SDK API setCustomData
+**method setCustomData (customData : JSONSTRING)**
+Using this method you can send any additional info about the client to the agent's App. This info will be shown on the information panel, located on the right side of the agent's App. The method can be called as many times as you need. If chat is established, information in the agent's App will be updated in real time. Fields will be displayed in the same sequence as they are in the array 'fields'.
+**customData: JSONSTRING of Array**
+
+| Param      | Type           | Description  |
+| ------------- |:-------------:| ---------:|
+| customData   | Array        | List of additional data fields of the chat |
+
+fields of object
+
+| Key      | Type           | Description  |
+| ------------- |:-------------:| ---------:|
+|content	|string	|Content of data field. Tags will be insulated|
+|title	|string	|Title shown above a data field|
+|link	|string	|URL that opens when you click on a data field|
+|key	|string	|Description of the data field, bold text before a colon|
+
+#### SDK API setUserToken
+**method setUserToken (userToken : JSONSTRING)**
+Use this method to open chat window with custom text at the moment you need. This may be useful if you want to show proactive invitation after the client added goods to cart of your online store
+**userToken : JSONSTRING of string**
+
+| Param      | Type           | Description  |
+| ------------- |:-------------:| ---------:|
+|userToken	|string	|Visitor id|
+
+#### SDK API sendMessage
+**method sendMessage (message : JSONSTRING)**
+**message : JSONSTRING of string**
+
+| Param      | Type           | Description  |
+| ------------- |:-------------:| ---------:|
+|message	|string	|Message text|
+
+#### SDK API getContactInfo
+**method getContactInfo()**
+get contact information. SDK sends 'contact.info' event
+
+#### SDK API getAgentInfo()
+**method getAgentInfo ()**
+get operator information, SDK sends 'contact.info' event
+
+#### SDK API getAgentName()
+**method getAgentName()**
+get operator name, SDK sends 'agent.name' event
+
+#### SDK API getAgentName()
+**method chatMode()**
+get chat mode, SDK sends 'chat.mode' event
+
+### Примеры вызова функций API
+#### iOS
+```objective-c
+//************************************************
+-(void)onEvent:(NSString *)name :(NSString*)data;{
+    NSLog(@"event:%@, data:%@", name, data);
+    if([[name lowercaseString] isEqualToString:@"url.click"]){
+        if([data length] > 2){
+            NSString *urlStr = [data substringWithRange:NSMakeRange(1,[data length] - 2)];
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:urlStr]];
+        }
+    }else if([[name lowercaseString] isEqualToString:@"chat.ready"]){
+        NSString *contactInfo = @"{\"client_name\": \"User\", \"email\": \"123@123.com\", \"phone\": \"1234\",\"description\": \"description\"}";
+
+        [jivoSdk callApiMethod:@"setContactInfo" :contactInfo];
+
+        [jivoSdk callApiMethod:@"setUserToken" :@"\"UserToken\""];
+    }
+}
+```
+#### Android
+```java
+//*********************************************
+    @Override
+    public void onEvent(String name, String data) {
+        if (name.equals("chat.ready")) {
+            jivoSdk.callApiMethod("setContactInfo","{\"client_name\": \"User\", \"email\": \"123@123.com\", \"phone\": \"1234\",\"description\": \"description\"}");
+            jivoSdk.callApiMethod("setUserToken","\"UserToken\"");
+        }
+    }
+```
+
 

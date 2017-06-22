@@ -171,6 +171,12 @@ static Class hackishFixClass = Nil;
 }
 
 
+- (NSString *)decodeString:(NSString *)encodedString {
+    NSString *decodedString = [encodedString stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+
+    return decodedString;
+}
+
 #pragma mark - UIWebViewDelegate
 
 - (void)webViewDidStartLoad:(UIWebView *)webView {
@@ -190,24 +196,17 @@ static Class hackishFixClass = Nil;
     NSURL *url = request.URL;
     //если загрузка по протоколу jivoapi://, то начинаем обработку
     if ([[[url scheme] lowercaseString] isEqualToString:@"jivoapi"]) {
-        if([[[url absoluteString] lowercaseString] isEqualToString:@"jivoapi://command.hidekeyboard"]){
-            [_webView endEditing:YES];
-            [delegate onEvent:@"command.hidekeyboard" :@""];
-        }else if([[[url absoluteString] lowercaseString] isEqualToString:@"jivoapi://agent.set"]){
-            NSString *agentName = [self execJs:@"window.agentName()"];
-            [delegate onEvent:@"agent.set" : agentName];
-            
-        }else if([[[[url absoluteString] lowercaseString] substringWithRange:NSMakeRange(0, 20)] isEqualToString:@"jivoapi://url.click/"]){
-            NSString *fullStr = [url absoluteString];
-            NSString *urlStr = [fullStr substringWithRange:NSMakeRange(20, [fullStr length]-20)];
-            
-            [delegate onEvent:@"url.click" : urlStr];
-            
-            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:urlStr]];
-        }else{
-            NSString *event = [[[url absoluteString] lowercaseString] substringWithRange:NSMakeRange(10, [[url absoluteString] length]-10)];
-            [delegate onEvent:event :@""];
+        
+        NSArray *components = [[[url absoluteString] stringByReplacingOccurrencesOfString:@"jivoapi://"
+                                                                               withString:@""] componentsSeparatedByString:@"/"];
+        NSString *apiKey = (NSString*)[components objectAtIndex:0];
+        NSString *data = @"";
+        if ([components count] > 1){
+            data = [self decodeString: (NSString*)[components objectAtIndex:1]];
         }
+        
+        [delegate onEvent:apiKey :data];
+        
         return YES;
     }
     return YES;
@@ -273,7 +272,6 @@ static Class hackishFixClass = Nil;
     _webView.scrollView.scrollEnabled = NO;
     _webView.scrollView.bounces = NO;
     
-    
     //настройка скрытия клавиатуры
     _webView.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     
@@ -304,6 +302,10 @@ static Class hackishFixClass = Nil;
 
 -(NSString*) execJs : (NSString*) code;{
         return [_webView stringByEvaluatingJavaScriptFromString:code];
+}
+
+-(void) callApiMethod: (NSString*) methodName : (NSString*)data;{
+    [_webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"window.jivo_api.%@(%@);",methodName,data]];
 }
 
 @end

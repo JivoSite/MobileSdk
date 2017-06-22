@@ -8,8 +8,8 @@ android {
         applicationId "com.jivosite.supportapp"
         minSdkVersion 19
         targetSdkVersion 23
-        versionCode 105
-        versionName "1.0.5"
+        versionCode 120
+        versionName "1.2.0"
     }
     buildTypes {
         release {

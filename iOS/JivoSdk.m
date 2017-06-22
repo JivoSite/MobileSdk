@@ -23,7 +23,7 @@
 
 @synthesize delegate;
 
-/* hackishFixClassName for hide keyboard*/
+/* hackishFixClassName для открытия стандартной клавиатуры*/
 static const char * const hackishFixClassName = "UIWebBrowserViewMinusAccessoryView";
 static Class hackishFixClass = Nil;
 
@@ -78,7 +78,7 @@ static Class hackishFixClass = Nil;
 }
 
 - (void)removeBar {
-    // hide keyboard toolbar
+    // убираем toolbar на клаве
     if (![self hackishlyHidesInputAccessoryView]){
         [self setHackishlyHidesInputAccessoryView: YES];
     }
@@ -87,10 +87,10 @@ static Class hackishFixClass = Nil;
 
 - (void)keyboardWillShow:(NSNotification *)notification {
     NSLog(@"keyboardWillShow");
-    //remove bar from keyboard
+    //перед показом клавиатуры делаем ее стандартной
     [self performSelector:@selector(removeBar) withObject:nil afterDelay:0];
     
-    //calculate keyboard height
+    //вычисляем высоту клавиатуры и передаем в виджет
     CGRect keyboardFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
     keyboardFrame = [_webView convertRect:keyboardFrame fromView:nil];
     
@@ -102,7 +102,7 @@ static Class hackishFixClass = Nil;
 - (void)keyboardDidShow:(NSNotification *)notification {
     NSLog(@"keyboardDidShow");
     
-    //calculate keyboard height and send to widget
+    //вычисляем высоту клавиатуры и передаем в виджет
     CGRect keyboardFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
     keyboardFrame = [_webView convertRect:keyboardFrame fromView:nil];
     
@@ -114,7 +114,7 @@ static Class hackishFixClass = Nil;
 - (void)keyboardWillHide:(NSNotification *)notification {
     NSLog(@"keyboardWillHide");
     
-    // keyboard animation
+    // анимация для скрытия клавиатуры
     CGRect frame = _webView.frame;
     frame.origin.y = 0;
     
@@ -130,7 +130,7 @@ static Class hackishFixClass = Nil;
 }
 
 
-/* webview load spinner*/
+/* Создание спиннера пока загружается webview*/
 - (void)createLoader {
     loadingView = [[UIView alloc]initWithFrame:CGRectMake(100, 400, 80, 80)];
     loadingView.backgroundColor = [UIColor colorWithWhite:0. alpha:0.6];
@@ -171,16 +171,22 @@ static Class hackishFixClass = Nil;
 }
 
 
+- (NSString *)decodeString:(NSString *)encodedString {
+    NSString *decodedString = [encodedString stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+
+    return decodedString;
+}
+
 #pragma mark - UIWebViewDelegate
 
 - (void)webViewDidStartLoad:(UIWebView *)webView {
     //onDidStartLoad
-    //show spinner
+    //спиннер видим
     [loadingView setHidden:NO];
 }
 
 - (void)webViewDidFinishLoad:(UIWebView *)webView {
-    //hide spinner
+    //спиннер не видим
     [loadingView setHidden:YES];
     //for ios 7.1
     [self removeBar];
@@ -188,26 +194,19 @@ static Class hackishFixClass = Nil;
 
 -(BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
     NSURL *url = request.URL;
-    //if jivoapi:// protocol
+    //если загрузка по протоколу jivoapi://, то начинаем обработку
     if ([[[url scheme] lowercaseString] isEqualToString:@"jivoapi"]) {
-        if([[[url absoluteString] lowercaseString] isEqualToString:@"jivoapi://command.hidekeyboard"]){
-            [_webView endEditing:YES];
-            [delegate onEvent:@"command.hidekeyboard" :@""];
-        }else if([[[url absoluteString] lowercaseString] isEqualToString:@"jivoapi://agent.set"]){
-            NSString *agentName = [self execJs:@"window.agentName()"];
-            [delegate onEvent:@"agent.set" : agentName];
-            
-        }else if([[[[url absoluteString] lowercaseString] substringWithRange:NSMakeRange(0, 20)] isEqualToString:@"jivoapi://url.click/"]){
-            NSString *fullStr = [url absoluteString];
-            NSString *urlStr = [fullStr substringWithRange:NSMakeRange(20, [fullStr length]-20)];
-            
-            [delegate onEvent:@"url.click" : urlStr];
-            
-            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:urlStr]];
-        }else{
-            NSString *event = [[[url absoluteString] lowercaseString] substringWithRange:NSMakeRange(10, [[url absoluteString] length]-10)];
-            [delegate onEvent:event :@""];
+        
+        NSArray *components = [[[url absoluteString] stringByReplacingOccurrencesOfString:@"jivoapi://"
+                                                                               withString:@""] componentsSeparatedByString:@"/"];
+        NSString *apiKey = (NSString*)[components objectAtIndex:0];
+        NSString *data = @"";
+        if ([components count] > 1){
+            data = [self decodeString: (NSString*)[components objectAtIndex:1]];
         }
+        
+        [delegate onEvent:apiKey :data];
+        
         return YES;
     }
     return YES;
@@ -239,7 +238,7 @@ static Class hackishFixClass = Nil;
 }
 
 - (void) prepare; {
-    //add keyboard observers
+    //подписываемся на уведомления клавиатуы
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(keyboardWillShow:)
                                                  name:UIKeyboardWillShowNotification
@@ -260,21 +259,20 @@ static Class hackishFixClass = Nil;
                                                  name:UIKeyboardDidShowNotification
                                                object:nil];
     
-    //set delegate
+    //назначенее делегата
     _webView.delegate = self;
 }
 
 -(void) start;{
     
-    //spinner
+    //спиннер
     [self createLoader];
     
-    //hide native scroll
+    //убираем нативный скролл
     _webView.scrollView.scrollEnabled = NO;
     _webView.scrollView.bounces = NO;
     
-    
-    //setup keyboard hide
+    //настройка скрытия клавиатуры
     _webView.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     
     NSString *indexFile;
@@ -285,7 +283,7 @@ static Class hackishFixClass = Nil;
         indexFile = @"index";
     }
     
-    //load widget code to webview
+    //загрузка кода виджета в webview
     NSString *htmlFile = [[NSBundle mainBundle] pathForResource:indexFile ofType:@"html" inDirectory:@"/html"];
     NSString* htmlString = [NSString stringWithContentsOfFile:htmlFile encoding:NSUTF8StringEncoding error:nil];
     
@@ -304,6 +302,10 @@ static Class hackishFixClass = Nil;
 
 -(NSString*) execJs : (NSString*) code;{
         return [_webView stringByEvaluatingJavaScriptFromString:code];
+}
+
+-(void) callApiMethod: (NSString*) methodName : (NSString*)data;{
+    [_webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"window.jivo_api.%@(%@);",methodName,data]];
 }
 
 @end

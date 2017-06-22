@@ -29,6 +29,7 @@
 -(void) start;
 -(void) stop;
 -(NSString*) execJs : (NSString*) code;
+-(void) callApiMethod: (NSString*) methodName : (NSString*)data;
 
 @end
 
