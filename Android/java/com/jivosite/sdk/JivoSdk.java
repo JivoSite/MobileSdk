@@ -2,22 +2,28 @@ package com.jivosite.sdk;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.util.DisplayMetrics;
 import android.view.ViewTreeObserver;
+import android.view.WindowManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebViewClient;
+
+import java.util.HashMap;
 
 public class JivoSdk {
 
     private WebView webView;
     private ProgressDialog progr;
     private String language;
+    private HashMap<String, String> userData;
+
     public JivoDelegate delegate = null;
 
     public JivoSdk(WebView webView){
@@ -32,9 +38,17 @@ public class JivoSdk {
 
     }
 
+    public void setUserData(String client_name, String email, String phone) {
+        userData = new HashMap<>();
+        userData.put("client_name", client_name);
+        userData.put("email", email);
+        userData.put("phone", phone);
+    }
+
     public void prepare(){
         DisplayMetrics dm = new DisplayMetrics();
-        ((Activity)delegate).getWindowManager().getDefaultDisplay().getMetrics(dm);
+        WindowManager wm = (WindowManager) webView.getContext().getSystemService(Context.WINDOW_SERVICE);
+        wm.getDefaultDisplay().getMetrics(dm);
         final float density = dm.density;
 
         ViewTreeObserver.OnGlobalLayoutListener list = new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -62,9 +76,7 @@ public class JivoSdk {
         webView.getViewTreeObserver().addOnGlobalLayoutListener(list);
 
         //создаем спиннер
-        progr = new ProgressDialog(webView.getContext());
-        progr.setTitle("JivoSite");
-        progr.setMessage("Загрузка...");
+        progr = ProgressDialog.show(webView.getContext(), "JivoSite", "Загрузка...");
 
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
@@ -190,6 +202,12 @@ public class JivoSdk {
         public void onPageFinished(WebView view, String url)
         {
             super.onPageFinished(view, url);
+
+            if (userData != null) {
+                webView.loadUrl("javascript:window._setData('" + userData.get("client_name") + "', '" + userData.get("email") + "', '" + userData.get("phone") + "')");
+                userData = null;
+            }
+
             progr.dismiss();
         }
 
