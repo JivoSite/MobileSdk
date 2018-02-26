@@ -1,206 +1,258 @@
 package com.jivosite.sdk;
 
-import android.app.Activity;
-import android.app.ProgressDialog;
-import android.content.Intent;
+import android.annotation.TargetApi;
 import android.graphics.Bitmap;
-import android.graphics.Rect;
-import android.net.Uri;
-import android.util.DisplayMetrics;
-import android.view.ViewTreeObserver;
+import android.os.Build;
+import android.support.annotation.NonNull;
+import android.view.View;
+
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.JavascriptInterface;
 import android.webkit.WebViewClient;
+import android.widget.ProgressBar;
+
+import java.net.URLDecoder;
+
+/**
+ *  Created by dimmetrius.
+ *  Refactored & extended by Maxim Todorenko on 26/02/2018.
+ *  Copyright © 2017 JivoSite. All rights reserved.
+ *  Copyright © 2018 maximot. All rights reserved.
+ *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ */
+
+/**
+ *  This class provides Java business-logic for JivoSite Web-based chat
+ *  @author maximot
+ *  @author dimmetrius
+ */
 
 public class JivoSdk {
 
-    private WebView webView;
-    private ProgressDialog progr;
-    private String language;
-    public JivoDelegate delegate = null;
 
+    /**
+     *  Language constants
+     */
+    public static final String LANG_RU = "ru";
+    public static final String LANG_EN = "en";
+    public static final String LANG_DEFAULT = "";
+
+    /**
+     *  Constant API_SCHEME determines the String with scheme of JivoSite URI
+     */
+    private static final String API_SCHEME = "jivoapi://";
+
+    /**
+     *  Field mWebView is the WebView that shows the chat to the user
+     */
+    private WebView mWebView;
+    /**
+     *  Field mProgressBar is the Android ProgressBar that shows the loading progress to the user
+     */
+    private ProgressBar mProgressBar;
+    /**
+     *  Field mLanguage determines which language has to be loaded
+     */
+    private String mLanguage;
+    /**
+     *  Field mDelegate is the delegate for interaction with the third-party code
+     */
+    private JivoDelegate mDelegate = null;
+
+
+    /**
+     *  Minimalistic class constructor.
+     *  @param webView the WebView to be used for chat
+     *  Default values for other params:
+     *  @param loadingProgressBar = null
+     *  @param language = LANG_DEFAULT
+     */
     public JivoSdk(WebView webView){
-        this.webView = webView;
-        this.language = "";
-
+       this(webView,null,LANG_DEFAULT);
     }
 
+
+    /**
+     *  Class constructor with language choice.
+     *  @param webView the WebView to be used for chat
+     *  @param language the language to be used for chat
+     *  Default values for other params:
+     *  @param loadingProgressBar = null
+     */
     public JivoSdk(WebView webView, String language){
-        this.webView = webView;
-        this.language = language;
-
+        this(webView,null,language);
     }
 
+    /**
+     *  Class constructor with language choice & progressBar
+     *  @param webView the WebView to be used for chat
+     *  @param language the language to be used for chat
+     *  @param loadingProgressBar the ProgressBar to be used for indicating webView loading progress
+     */
+    public JivoSdk(WebView webView, ProgressBar loadingProgressBar, String language){
+        this.mWebView = webView;
+        this.mLanguage = language;
+        this.mProgressBar = loadingProgressBar;
+    }
+
+
+    /**
+     *  prepare method must be called after constructor.
+     *  That method shows progressBar to the user & loads chat page into prepared webView
+     */
     public void prepare(){
-        DisplayMetrics dm = new DisplayMetrics();
-        ((Activity)delegate).getWindowManager().getDefaultDisplay().getMetrics(dm);
-        final float density = dm.density;
 
-        ViewTreeObserver.OnGlobalLayoutListener list = new ViewTreeObserver.OnGlobalLayoutListener() {
-            int previousHeightDiff = 0;
-            @Override
-            public void onGlobalLayout() {
-                Rect r = new Rect();
-                //r will be populated with the coordinates of your view that area still visible.
-                webView.getWindowVisibleDisplayFrame(r);
+        //Show loading spinner
+        if(mProgressBar != null){
+           mProgressBar.setIndeterminate(true);
+           showProgress();
+        }
 
-                int heightDiff = webView.getRootView().getHeight() - r.bottom;
-                int pixelHeightDiff = (int)(heightDiff / density);
-                if (pixelHeightDiff > 100 && pixelHeightDiff != previousHeightDiff) { // if more than 100 pixels, its probably a keyboard...
-                    //String msg = "S" + Integer.toString(pixelHeightDiff);
-                    execJS("window.onKeyBoard({visible:false, height:0})");
-                }
-                else if ( pixelHeightDiff != previousHeightDiff && ( previousHeightDiff - pixelHeightDiff ) > 100 ){
-                    //String msg = "H";
-                    execJS("window.onKeyBoard({visible:false, height:0})");
-                }
-                previousHeightDiff = pixelHeightDiff;
-            }
-        };
-
-        webView.getViewTreeObserver().addOnGlobalLayoutListener(list);
-
-        //создаем спиннер
-        progr = new ProgressDialog(webView.getContext());
-        progr.setTitle("JivoSite");
-        progr.setMessage("Загрузка...");
-
-        WebSettings webSettings = webView.getSettings();
+        //Setting up the webView...
+        WebSettings webSettings = mWebView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
 
-        //пробрасываем JivoInterface в Javascript
-        webView.addJavascriptInterface(new JivoInterface(webView), "JivoInterface");
-        webView.setWebViewClient(new MyWebViewClient());
+        mWebView.setWebViewClient(new JivoWebViewClient());
 
-        if (this.language.length() > 0){
-            webView.loadUrl("file:///android_asset/html/index_"+this.language+".html");
+        //Loading page with chat
+        if (this.mLanguage.length() > 0){
+            mWebView.loadUrl("file:///android_asset/html/index_"+this.mLanguage +".html");
         }else{
-            webView.loadUrl("file:///android_asset/html/index.html");
+            mWebView.loadUrl("file:///android_asset/html/index.html");
         }
 
     }
 
-    public class JivoInterface{
-
-        private WebView mAppView;
-        public JivoInterface  (WebView appView) {
-            this.mAppView = appView;
-        }
-
-        @JavascriptInterface
-        public void send(String name, String data){
-            if (delegate != null){
-                delegate.onEvent(name, data);
-            }
-        }
+    /**
+     *  Delegate getter
+     */
+    public JivoDelegate getDelegate() {
+        return mDelegate;
     }
 
+    /**
+     *  Delegate setter
+     *  @param delegate the delegate to be setted
+     */
+    public void setDelegate(JivoDelegate delegate) {
+        this.mDelegate = delegate;
+    }
+
+    /**
+     *  decodeString method decodes String from URI-encoded String
+     *  @param encodedURI the String to be decoded
+     */
     public static String decodeString(String encodedURI) {
-        char actualChar;
-
-        StringBuffer buffer = new StringBuffer();
-
-        int bytePattern, sumb = 0;
-
-        for (int i = 0, more = -1; i < encodedURI.length(); i++) {
-            actualChar = encodedURI.charAt(i);
-
-            switch (actualChar) {
-                case '%': {
-                    actualChar = encodedURI.charAt(++i);
-                    int hb = (Character.isDigit(actualChar) ? actualChar - '0'
-                            : 10 + Character.toLowerCase(actualChar) - 'a') & 0xF;
-                    actualChar = encodedURI.charAt(++i);
-                    int lb = (Character.isDigit(actualChar) ? actualChar - '0'
-                            : 10 + Character.toLowerCase(actualChar) - 'a') & 0xF;
-                    bytePattern = (hb << 4) | lb;
-                    break;
-                }
-                case '+': {
-                    bytePattern = ' ';
-                    break;
-                }
-                default: {
-                    bytePattern = actualChar;
-                }
-            }
-
-            if ((bytePattern & 0xc0) == 0x80) { // 10xxxxxx
-                sumb = (sumb << 6) | (bytePattern & 0x3f);
-                if (--more == 0)
-                    buffer.append((char) sumb);
-            } else if ((bytePattern & 0x80) == 0x00) { // 0xxxxxxx
-                buffer.append((char) bytePattern);
-            } else if ((bytePattern & 0xe0) == 0xc0) { // 110xxxxx
-                sumb = bytePattern & 0x1f;
-                more = 1;
-            } else if ((bytePattern & 0xf0) == 0xe0) { // 1110xxxx
-                sumb = bytePattern & 0x0f;
-                more = 2;
-            } else if ((bytePattern & 0xf8) == 0xf0) { // 11110xxx
-                sumb = bytePattern & 0x07;
-                more = 3;
-            } else if ((bytePattern & 0xfc) == 0xf8) { // 111110xx
-                sumb = bytePattern & 0x03;
-                more = 4;
-            } else { // 1111110x
-                sumb = bytePattern & 0x01;
-                more = 5;
-            }
-        }
-        return buffer.toString();
+        return URLDecoder.decode(encodedURI);
     }
 
-    private class MyWebViewClient extends WebViewClient {
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+    /**
+     *  showProgress method shows progressBar to the user if it is not null
+     */
+    private void showProgress() {
+        if(mProgressBar!=null){
+            mProgressBar.setProgress(0);
+            mProgressBar.setVisibility(View.VISIBLE);
+        }
+    }
 
-            if (url.toLowerCase().indexOf("jivoapi://") == 0){
-                String[] components = url.replace("jivoapi://", "").split("/");
 
-                String apiKey = components[0];
-                String data = "";
-                if (components.length > 1){
-                    data = decodeString(components[1]);
-                }
+    /**
+     *  hideProgress method hides progressBar if it is not null
+     */
+    private void hideProgress() {
+        if(mProgressBar!=null){
+            mProgressBar.setProgress(100);
+            mProgressBar.setVisibility(View.GONE);
+        }
+    }
 
-                if (delegate != null) {
-                    delegate.onEvent(apiKey, data);
-                }
+    /**
+     *  processUrl method processes given url & if it is api call sends message to the delegate
+     *  @param url the String to be processed
+     */
+    private void processUrl(String url) {
+        if(url==null) return;
 
-                return true;
+        if (url.toLowerCase().contains(API_SCHEME)){
+
+            String[] components = url.replace(API_SCHEME, "").split("/");
+
+            String apiKey = components[0];
+            String dataString = "";
+
+            if (components.length > 1){
+                dataString = decodeString(components[1]);
             }
 
-            // Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
-            //Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            //startActivity(intent);
-            return true;
+            if (mDelegate !=null) {
+                mDelegate.onEvent(apiKey, dataString);
+            }
+        }
+    }
+
+    /**
+     *  execJS method executes given script
+     *  @param script the JavaScript String to be executed
+     */
+    private void execJS(@NonNull String script){
+        mWebView.evaluateJavascript("javascript:" + script,null);
+    }
+
+    /**
+     *  callApiMethod method calls JivoSite api methods with given data
+     *  @param methodName the JivoApi method name (String) to be executed
+     *  @param data the Data (String) to be passed to the JivoApi method
+     */
+    public void callApiMethod(@NonNull String methodName,@NonNull String data){
+        execJS("window.jivo_api." + methodName + "("+ data +");");
+    }
+
+    /**
+     *  dispose method
+     */
+    public void dispose(){
+        mWebView.loadUrl("about:blank");
+        mWebView.destroy();
+        mWebView = null;
+        mProgressBar = null;
+        mDelegate = null;
+    }
+
+
+    /**
+     *  JivoWebViewClient class is required to show/hide progress automatically & process api calls
+     */
+    private class JivoWebViewClient extends WebViewClient {
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, String url){
+            processUrl(url);
+            return super.shouldOverrideUrlLoading(view, url);
+        }
+
+        @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request){
+            String url = request.getUrl().toString();
+            processUrl(url);
+            return super.shouldOverrideUrlLoading(view, request);
         }
 
         @Override
-        public void onPageStarted(WebView view, String url, Bitmap favicon)
-        {
+        public void onPageStarted(WebView view, String url, Bitmap favicon){
             super.onPageStarted(view, url, favicon);
+            showProgress();
         }
 
         @Override
-        public void onPageFinished(WebView view, String url)
-        {
+        public void onPageFinished(WebView view, String url){
             super.onPageFinished(view, url);
-            progr.dismiss();
+            hideProgress();
         }
 
-    }
-
-    public void execJS(String script){
-        webView.loadUrl("javascript:" + script);
-    }
-
-    public void callApiMethod(String methodName, String data){
-        webView.loadUrl("javascript:window.jivo_api." + methodName + "("+ data +");");
     }
 
 }
