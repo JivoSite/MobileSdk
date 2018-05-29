@@ -116,7 +116,7 @@ static Class hackishFixClass = Nil;
     
     // анимация для скрытия клавиатуры
     CGRect frame = _webView.frame;
-    frame.origin.y = 0;
+    //frame.origin.y = 0;
     
     [UIView animateWithDuration:0.3 animations:^{
         _webView.frame = frame;
