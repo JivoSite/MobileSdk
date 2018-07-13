@@ -215,9 +215,7 @@ extension JivoSdk {
     }
     
     @objc fileprivate func keyboardWillHide(notification: Notification) {
-        guard var frame = webView?.frame else { return }
-        
-        frame.origin.y = 0
+        guard let frame = webView?.frame else { return }
         
         UIView.animate(withDuration: 0.3, animations: {() -> Void in
             self.webView?.frame = frame
